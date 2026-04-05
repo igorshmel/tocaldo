@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Planner</title>
+    <style>
+        :root {
+            /* ПАЛИТРА */
+            --bg-color: #fff7ea;          
+            --sidebar-bg: #fff7ea;        
+            --header-peach: #f3e1cb;      
+            --header-grey: #bababa;       
+            --header-active-green: #cbd1c7; 
+            
+            --accent-green: #e3e4d2;      
+            --accent-peach: #fee3ce;      
+            --accent-grey: #f9ead5;
+            
+            --checkbox-orange: #fddeca;   
+            
+            --text-color: #555;
+            --border-color: #e3dbce;      
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            
+            /* Настройки сетки */
+            --slot-height: 45px; /* Высота 1 часа */
+            --time-col-width: 60px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-family);
+            background-color: #fffaed; 
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            /* Разрешаем выделение текста внутри body, но запретим точечно в контейнере */
+        }
+
+        .planner-container {
+            background: var(--bg-color); 
+            width: 100%;
+            max-width: 1400px;
+            height: 95vh;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            /* Запрещаем выделение интерфейса, чтобы не мешало драгу */
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color); 
+            padding: 25px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; 
+            height: 100%; 
+            overflow-y: auto;
+            z-index: 20; 
+        }
+
+        .section-header {
+            background-color: var(--header-peach);
+            padding: 12px;
+            text-align: center;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 20px; 
+            border-radius: 2px;
+            color: #555;
+            font-size: 0.95rem;
+        }
+
+        .task-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            font-size: 0.85rem;
+            color: #666;
+            padding-left: 5px;
+        }
+
+        .task-item { display: flex; align-items: center; gap: 12px; cursor: pointer; transition: color 0.2s; }
+        .task-item:hover { color: #333; }
+
+        .custom-radio {
+            width: 16px; height: 16px; border: 1px solid #CCC; border-radius: 50%; display: inline-block; position: relative;
+        }
+        .custom-radio.checked::after {
+            content: ''; position: absolute; top: 3px; left: 3px; width: 8px; height: 8px; background-color: #AAA; border-radius: 50%;
+        }
+
+        .habits-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; color: #666; }
+        .habits-table th {
+            background-color: #fef2e6; padding: 8px 4px; text-align: center; border: 1px solid #f6edde; font-weight: normal; color: #999; font-size: 0.7rem;
+        }
+        .habits-table td { padding: 4px 4px; text-align: center; border: 1px solid #f6edde; }
+        .habits-table th:first-child, .habits-table td:first-child { text-align: left; padding-left: 8px; }
+        .habits-table th:first-child { font-weight: 700; color: #444; width: 110px; }
+
+        .check-box {
+            width: 14px; height: 14px; border: 1px solid #BBB; border-radius: 3px; display: inline-block; cursor: pointer; vertical-align: middle; transition: background-color 0.2s;
+        }
+        .check-box.checked { background-color: var(--checkbox-orange); border-color: #AAA; }
+
+        /* --- CALENDAR VIEW --- */
+        .calendar-view {
+            display: flex;
+            overflow-x: auto;
+            background-color: var(--bg-color); 
+            scrollbar-width: thin; 
+            scroll-snap-type: x mandatory; 
+        }
+
+        .day-column {
+            min-width: 33.333%; 
+            flex: 0 0 33.333%; 
+            border-right: 1px solid #e3dbce; 
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-color); 
+            scroll-snap-align: start;
+            position: relative; 
+        }
+        .day-column:last-child { border-right: none; }
+
+        .day-header-container {
+            padding: 20px 20px 10px 20px;
+            background-color: var(--bg-color);
+            text-align: center;
+            z-index: 10;
+            position: relative;
+        }
+
+        .day-header-box {
+            background-color: var(--header-grey); 
+            color: white;
+            padding: 10px 0;
+            border-radius: 4px;
+            width: 100%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .day-header-box.active { background-color: var(--header-active-green); }
+        .day-header-box h2 { font-size: 1.2rem; font-weight: 400; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .day-date {
+            background-color: var(--bg-color);
+            color: #AAA;
+            text-align: center;
+            padding: 5px 0 15px 0;
+            font-size: 0.85rem;
+            font-weight: 300;
+            border-bottom: 1px solid #F0F0F0;
+        }
+
+        /* --- GRID & EVENTS --- */
+        
+        .grid-container {
+            position: relative;
+            flex: 1;
+            width: 100%; 
+        }
+
+        .time-slot {
+            display: grid;
+            grid-template-columns: var(--time-col-width) 1fr;
+            height: var(--slot-height); 
+            border-bottom: 1px solid #f6edde; 
+            box-sizing: border-box;
+        }
+
+        .ts-time {
+            font-size: 0.7rem;
+            color: #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid #FAFAFA;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* The Events */
+        .event-card {
+            position: absolute; 
+            left: 65px; 
+            right: 5px; 
+            width: auto; 
+            
+            border-radius: 3px;
+            padding: 0 8px;
+            font-size: 0.75rem;
+            line-height: 1.2;
+            display: flex;
+            align-items: center;
+            color: #555;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.08); 
+            z-index: 5;
+            cursor: grab;
+            overflow: hidden;
+            transition: box-shadow 0.2s, z-index 0s;
+        }
+
+        .event-card:hover { z-index: 10; }
+        
+        /* Стили при редактировании */
+        .event-card.is-editing {
+            cursor: text !important;
+            z-index: 50;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            /* УБРАНО: background-color: #fff, чтобы цвет не менялся */
+            /* УБРАНО: border, чтобы не появлялась рамка */
+            
+            /* Разрешаем выделение текста внутри карточки при редактировании */
+            user-select: text !important;
+            -webkit-user-select: text !important;
+        }
+        
+        .event-card:not(.is-editing):active { cursor: grabbing; box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+
+        .resize-handle {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            cursor: ns-resize;
+            z-index: 20;
+        }
+
+        .evt-peach { background-color: var(--accent-peach); }
+        .evt-green { background-color: var(--accent-green); }
+        .evt-grey { background-color: var(--accent-grey); color: #555; }
+        
+        /* Единое текстовое поле события */
+        .evt-text { 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            pointer-events: auto; /* Важно для клика */
+            width: 100%;
+            min-height: 1em; /* Чтобы можно было кликнуть в пустой блок */
+            position: relative;
+            z-index: 15; 
+        }
+        
+        /* Убираем пунктир и outline при редактировании */
+        .evt-text[contenteditable="true"] {
+            outline: none;
+            cursor: text;
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            border-bottom: none; /* Убрано подчеркивание */
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #EEE; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #DDD; }
+
+    </style>
+</head>
+<body>
+
+<div class="planner-container">
+    <aside class="sidebar">
+        <div class="sidebar-group">
+            <div class="section-header">Backlog</div>
+            <ul class="task-list">
+                <li class="task-item"><span class="custom-radio"></span> Grocery shopping</li>
+                <li class="task-item"><span class="custom-radio"></span> Meal prep</li>
+                <li class="task-item"><span class="custom-radio"></span> Clean linen house</li>
+                <li class="task-item"><span class="custom-radio"></span> Laundry</li>
+                <li class="task-item"><span class="custom-radio"></span> Grocery edit</li>
+                <li class="task-item"><span class="custom-radio"></span> Workout</li>
+                <li class="task-item"><span class="custom-radio"></span> Declutter house</li>
+                <li class="task-item"><span class="custom-radio"></span> Self care night</li>
+            </ul>
+        </div>
+        <div class="sidebar-group">
+            <div class="section-header">Notes</div>
+            <table class="habits-table">
+                <thead><tr><th>HABITS TASK</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th><th>S</th></tr></thead>
+                <tbody>
+                    <tr><td>Brush Teeth</td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td></tr>
+                    <tr><td>Skincare</td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td></tr>
+                    <tr><td>Exercise</td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td></tr>
+                    <tr><td>Journal</td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td></tr>
+                    <tr><td>Reading</td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td></tr>
+                    <tr><td>Tidy Up</td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td><td><div class="check-box"></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </aside>
+    <main class="calendar-view" id="calendarMain"></main>
+</div>
+
+<script>
+    // --- CONFIG ---
+    const START_HOUR = 7;
+    const END_HOUR = 23;
+    const SLOT_HEIGHT = 45; 
+    const MINS_PER_SLOT = 60;
+    const PX_PER_MIN = SLOT_HEIGHT / MINS_PER_SLOT;
+    
+    const SNAP_MINS = 30;
+    const SNAP_PX = SNAP_MINS * PX_PER_MIN; 
+    
+    const MARGIN_TOP = 3;
+    const MARGIN_BOTTOM = 3;
+    const TOTAL_VERTICAL_GAP = MARGIN_TOP + MARGIN_BOTTOM;
+
+    // --- DATA ---
+    // Объединяем category и task в один текст для простоты
+    let events = [
+        { id: 1, day: 'Monday', startTime: '07:15', duration: 45, fullText: 'Shower: Get ready', type: 'peach' },
+        { id: 2, day: 'Monday', startTime: '08:00', duration: 60, fullText: 'Work: Email', type: 'green' },
+        { id: 3, day: 'Monday', startTime: '09:00', duration: 120, fullText: 'Work: Deep focus', type: 'green' },
+        { id: 4, day: 'Monday', startTime: '12:30', duration: 30, fullText: 'Lunch', type: 'peach' },
+        { id: 5, day: 'Monday', startTime: '13:00', duration: 60, fullText: 'Household: Tidy-up', type: 'peach' },
+        { id: 6, day: 'Monday', startTime: '18:45', duration: 75, fullText: 'Dinner', type: 'peach' },
+        { id: 7, day: 'Tuesday', startTime: '07:00', duration: 60, fullText: 'Work', type: 'green' },
+        { id: 8, day: 'Tuesday', startTime: '13:15', duration: 60, fullText: 'Meeting: Sync', type: 'green' },
+        { id: 9, day: 'Tuesday', startTime: '18:00', duration: 90, fullText: 'Exercise', type: 'grey' },
+    ];
+
+    // --- UTILS ---
+    function timeToMinutes(timeStr) {
+        const [h, m] = timeStr.split(':').map(Number);
+        return (h - START_HOUR) * 60 + m;
+    }
+    function minutesToTime(totalMins) {
+        let h = Math.floor(totalMins / 60) + START_HOUR;
+        let m = Math.round(totalMins % 60);
+        return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+    }
+    
+    function checkOverlap(id, day, startTimeStr, durationMins) {
+        const newStart = timeToMinutes(startTimeStr);
+        const newEnd = newStart + durationMins;
+
+        return events.some(ev => {
+            if (ev.id === id) return false;
+            if (ev.day !== day) return false;
+            const evStart = timeToMinutes(ev.startTime);
+            const evEnd = evStart + ev.duration;
+            return (newStart < evEnd && newEnd > evStart);
+        });
+    }
+
+    function getWeekDays() {
+        const d = new Date();
+        const week = [];
+        const currentDayIndex = d.getDay();
+        const dist = currentDayIndex === 0 ? -6 : 1 - currentDayIndex;
+        const monday = new Date(d);
+        monday.setDate(d.getDate() + dist);
+        
+        for(let i=0; i<7; i++) {
+            const next = new Date(monday);
+            next.setDate(monday.getDate() + i);
+            week.push(next);
+        }
+        if (currentDayIndex === 1) { 
+             const prevSun = new Date(monday); prevSun.setDate(monday.getDate() - 1); week.unshift(prevSun);
+        }
+        if (currentDayIndex === 0) { 
+             const nextMon = new Date(monday); nextMon.setDate(monday.getDate() + 7); week.push(nextMon);
+        }
+        return week.map(d => ({
+            name: d.toLocaleDateString('en-US', { weekday: 'long' }),
+            date: d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+            fullDate: d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        }));
+    }
+
+    // --- RENDER ---
+    const days = getWeekDays();
+    const todayStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const container = document.getElementById('calendarMain');
+
+    function render() {
+        container.innerHTML = '';
+        days.forEach(day => {
+            const col = document.createElement('div');
+            col.className = 'day-column';
+            col.dataset.dayName = day.name;
+            const active = day.fullDate === todayStr ? 'active' : '';
+
+            const header = `
+                <div class="day-header-container">
+                    <div class="day-header-box ${active}"><h2>${day.name}</h2></div>
+                </div>
+                <div class="day-date">${day.date}</div>
+            `;
+            
+            const gridDiv = document.createElement('div');
+            gridDiv.className = 'grid-container';
+
+            for (let h = START_HOUR; h <= END_HOUR; h++) {
+                const slot = document.createElement('div');
+                slot.className = 'time-slot';
+                const hStr = h.toString().padStart(2,'0');
+                slot.innerHTML = `<div class="ts-time">${hStr}:00</div>`;
+                gridDiv.appendChild(slot);
+            }
+
+            events.filter(e => e.day === day.name).forEach(ev => {
+                const el = createEventEl(ev);
+                gridDiv.appendChild(el);
+            });
+
+            col.innerHTML = header;
+            col.appendChild(gridDiv);
+            container.appendChild(col);
+        });
+    }
+
+    function createEventEl(ev) {
+        const el = document.createElement('div');
+        el.className = `event-card evt-${ev.type}`;
+        el.dataset.id = ev.id;
+        
+        const top = timeToMinutes(ev.startTime) * PX_PER_MIN;
+        const height = ev.duration * PX_PER_MIN;
+        
+        el.style.top = `${top + MARGIN_TOP}px`;
+        el.style.height = `${height - TOTAL_VERTICAL_GAP}px`; 
+        
+        // Упрощенная структура: один div для текста
+        el.innerHTML = `
+            <div class="evt-text">${ev.fullText}</div>
+            <div class="resize-handle"></div>
+        `;
+        
+        setupInteractions(el, ev);
+        return el;
+    }
+
+    // --- INTERACTIONS ---
+    
+    function setupInteractions(el, evData) {
+        const handle = el.querySelector('.resize-handle');
+        
+        // Resize
+        handle.addEventListener('mousedown', (e) => {
+            e.stopPropagation(); 
+            startResize(e, el, evData);
+        });
+        
+        // Drag (only if not editing and not on handle)
+        el.addEventListener('mousedown', (e) => {
+            if (e.target === handle || e.target.isContentEditable) return;
+            startDrag(e, el, evData);
+        });
+
+        // Edit Text (Double Click)
+        el.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            startEdit(el, evData);
+        });
+    }
+
+    // --- EDIT TEXT LOGIC ---
+    function startEdit(el, evData) {
+        const textDiv = el.querySelector('.evt-text');
+        if (!textDiv) return;
+
+        // Включаем редактирование
+        textDiv.setAttribute('contenteditable', 'true');
+        el.classList.add('is-editing');
+        el.draggable = false; 
+        textDiv.focus();
+
+        // Курсор в конец
+        const range = document.createRange();
+        range.selectNodeContents(textDiv);
+        range.collapse(false); 
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        function finishEdit(e) {
+            if (e.type === 'keydown' && e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                textDiv.blur(); 
+                return;
+            }
+            
+            if (e.type === 'blur') {
+                const newText = textDiv.innerText.trim();
+                const ev = events.find(x => x.id === evData.id);
+                if (ev) ev.fullText = newText; // Сохраняем в объединенное поле
+
+                textDiv.setAttribute('contenteditable', 'false');
+                el.classList.remove('is-editing');
+                el.draggable = true; 
+                
+                textDiv.removeEventListener('keydown', finishEdit);
+                textDiv.removeEventListener('blur', finishEdit);
+                
+                render(); 
+            }
+        }
+
+        textDiv.addEventListener('keydown', finishEdit);
+        textDiv.addEventListener('blur', finishEdit);
+    }
+
+    function startResize(e, el, evData) {
+        const startY = e.clientY;
+        const startHeight = parseFloat(el.style.height);
+        const thisStart = timeToMinutes(evData.startTime);
+        
+        let maxDurationMins = (END_HOUR + 1 - START_HOUR) * 60 - thisStart;
+        
+        const dayEvents = events.filter(e => e.day === evData.day && e.id !== evData.id);
+        dayEvents.forEach(ev => {
+            const evStart = timeToMinutes(ev.startTime);
+            if (evStart >= thisStart) {
+                const gap = evStart - thisStart;
+                if (gap < maxDurationMins) maxDurationMins = gap;
+            }
+        });
+        
+        const maxVisualHeight = maxDurationMins * PX_PER_MIN - TOTAL_VERTICAL_GAP;
+
+        function move(e) {
+            const diff = e.clientY - startY;
+            let newVisualH = startHeight + diff;
+            
+            let newFullH = newVisualH + TOTAL_VERTICAL_GAP;
+            newFullH = Math.round(newFullH / SNAP_PX) * SNAP_PX;
+            
+            if (newFullH < SNAP_PX) newFullH = SNAP_PX;
+            
+            let constrainedVisualH = newFullH - TOTAL_VERTICAL_GAP;
+            if (constrainedVisualH > maxVisualHeight) {
+                constrainedVisualH = maxVisualHeight;
+            }
+            
+            el.style.height = `${constrainedVisualH}px`; 
+        }
+        
+        function up() {
+            window.removeEventListener('mousemove', move);
+            window.removeEventListener('mouseup', up);
+            
+            const h = parseFloat(el.style.height) + TOTAL_VERTICAL_GAP;
+            const ev = events.find(x => x.id === evData.id);
+            if (ev) ev.duration = (h / PX_PER_MIN);
+        }
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+    }
+
+    function startDrag(e, el, evData) {
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startTop = parseFloat(el.style.top); 
+        
+        const rect = el.getBoundingClientRect();
+        const offsetY = startY - rect.top; 
+        
+        el.style.zIndex = 100;
+        el.style.opacity = 0.8;
+        el.style.cursor = 'grabbing';
+        
+        let hasMoved = false;
+
+        function move(e) {
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            
+            if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+                hasMoved = true;
+                el.style.transform = `translate(${dx}px, ${dy}px)`;
+            }
+        }
+        
+        function up(e) {
+            window.removeEventListener('mousemove', move);
+            window.removeEventListener('mouseup', up);
+            
+            el.style.zIndex = '';
+            el.style.opacity = '';
+            el.style.transform = '';
+            el.style.cursor = '';
+            
+            if (!hasMoved) return;
+
+            el.style.display = 'none'; 
+            const elemBelow = document.elementFromPoint(e.clientX, e.clientY);
+            el.style.display = '';
+            
+            const col = elemBelow?.closest('.day-column');
+            let targetGrid = elemBelow?.closest('.grid-container');
+            
+            if (!targetGrid && col) {
+                targetGrid = col.querySelector('.grid-container');
+            }
+            
+            if (col && targetGrid) {
+                const gridRect = targetGrid.getBoundingClientRect();
+                const visualTop = e.clientY - offsetY - gridRect.top;
+                let logicalTop = visualTop - MARGIN_TOP;
+                
+                let snappedLogicalTop = Math.round(logicalTop / SNAP_PX) * SNAP_PX;
+                if (snappedLogicalTop < 0) snappedLogicalTop = 0;
+
+                const newMins = snappedLogicalTop / PX_PER_MIN;
+                const newTime = minutesToTime(newMins);
+                const targetDay = col.dataset.dayName;
+                
+                if (!checkOverlap(evData.id, targetDay, newTime, evData.duration)) {
+                    const ev = events.find(x => x.id === evData.id);
+                    if (ev) {
+                        ev.day = targetDay;
+                        ev.startTime = newTime;
+                        render(); 
+                    }
+                } else {
+                    el.style.top = `${startTop}px`;
+                }
+            } else {
+                el.style.top = `${startTop}px`;
+            }
+        }
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', up);
+    }
+
+    // --- INIT ---
+    render();
+    
+    setTimeout(() => {
+        const active = document.querySelector('.day-header-box.active');
+        if (active) {
+            const col = active.closest('.day-column');
+            const idx = Array.from(container.children).indexOf(col);
+            const w = col.offsetWidth;
+            container.scrollTo({ left: (idx-1)*w, behavior: 'smooth' });
+        }
+    }, 100);
+
+    document.querySelectorAll('.check-box').forEach(b => b.onclick = () => b.classList.toggle('checked'));
+    document.querySelectorAll('.custom-radio').forEach(r => r.onclick = () => r.classList.toggle('checked'));
+
+</script>
+
+</body>
+</html>

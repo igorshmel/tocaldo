@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Planner</title>
+    <style>
+        :root {
+            --bg-color: #FDFDFD;
+            --sidebar-bg: #FFFBF8;
+            --header-peach: #FFE4D6;
+            --header-grey: #9FA0A0; /* Чуть темнее для контраста текста */
+            --text-color: #555;
+            --accent-green: #DCECCF; /* Более пастельный зеленый как на фото */
+            --accent-peach: #FFE0CD;
+            --accent-grey: #EAEAEA;
+            --border-color: #EEE;
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: #F5F5F5;
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* Main Container */
+        .planner-container {
+            background: white;
+            width: 100%;
+            max-width: 1400px;
+            height: 95vh;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 25px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            overflow-y: auto;
+        }
+
+        .section-header {
+            background-color: var(--header-peach);
+            padding: 12px;
+            text-align: center;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 20px;
+            border-radius: 2px;
+            color: #555;
+            font-size: 0.95rem;
+        }
+
+        /* Progress Circle */
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 10px;
+            padding-left: 10px;
+        }
+
+        .progress-circle {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: 5px solid #F5F5F5; /* Светлая обводка */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #333;
+            position: relative;
+        }
+        
+        .progress-lines {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .line { height: 8px; background: #FFF0E0; border-radius: 4px; width: 100%; }
+        .line:nth-child(2) { width: 85%; }
+        .line:nth-child(3) { width: 70%; }
+
+        /* Task List */
+        .task-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            font-size: 0.85rem;
+            color: #666;
+            padding-left: 5px;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .task-item:hover {
+            color: #333;
+        }
+
+        .custom-radio {
+            width: 16px;
+            height: 16px;
+            border: 1px solid #CCC;
+            border-radius: 50%;
+            display: inline-block;
+            position: relative;
+        }
+        
+        /* Имитация точки внутри при клике (через JS класс) */
+        .custom-radio.checked::after {
+            content: '';
+            position: absolute;
+            top: 3px; left: 3px;
+            width: 8px; height: 8px;
+            background-color: #AAA;
+            border-radius: 50%;
+        }
+
+        /* Notes Section */
+        .notes-area {
+            background-color: var(--header-peach);
+            min-height: 80px;
+            border-radius: 4px;
+            padding: 15px;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        /* Habits Table */
+        .habits-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .habits-table th {
+            padding-bottom: 10px;
+            font-weight: normal;
+            color: #999;
+            font-size: 0.7rem;
+        }
+
+        .habits-table td {
+            padding: 4px;
+            text-align: center;
+        }
+
+        .habits-table td:first-child {
+            text-align: left;
+            padding-left: 0;
+            width: 90px;
+        }
+
+        .check-box {
+            width: 14px;
+            height: 14px;
+            border: 1px solid #DDD;
+            border-radius: 3px;
+            display: inline-block;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+        
+        .check-box.checked {
+            background-color: #B0B0B0;
+            border-color: #B0B0B0;
+        }
+
+        /* --- CALENDAR MAIN --- */
+        .calendar-view {
+            display: flex;
+            overflow-x: auto;
+            background-color: white;
+            /* Прячем скроллбар для эстетики в некоторых браузерах */
+            scrollbar-width: thin; 
+        }
+
+        .day-column {
+            min-width: 320px;
+            border-right: 1px solid #F0F0F0;
+            display: flex;
+            flex-direction: column;
+            background-color: #FFF;
+        }
+
+        /* UPDATED HEADER STYLES */
+        .day-header-container {
+            padding: 20px 20px 10px 20px;
+            background-color: #FFF;
+            text-align: center;
+        }
+
+        .day-header-box {
+            background-color: var(--header-grey);
+            color: white;
+            padding: 10px 0;
+            border-radius: 4px; /* Легкое скругление */
+            width: 100%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .day-header-box h2 {
+            font-size: 1.2rem;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .day-date {
+            background-color: #FFF;
+            color: #AAA; /* Светло-серый, почти незаметный как на макете */
+            text-align: center;
+            padding: 5px 0 15px 0;
+            font-size: 0.85rem;
+            font-weight: 300;
+        }
+
+        .day-subheader {
+            display: grid;
+            grid-template-columns: 60px 80px 1fr;
+            padding: 10px 0;
+            font-size: 0.75rem;
+            color: #BBB;
+            background-color: #FFFCF9; /* Очень легкий бежевый фон для подзаголовков */
+            border-top: 1px solid #FAFAFA;
+            border-bottom: 1px solid #F0F0F0;
+            text-align: center;
+            text-transform: capitalize;
+        }
+
+        .time-slot {
+            display: grid;
+            grid-template-columns: 60px 1fr;
+            min-height: 45px;
+            border-bottom: 1px solid #FCFCFC;
+        }
+
+        .ts-time {
+            font-size: 0.7rem;
+            color: #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid #FAFAFA;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .ts-content {
+            padding: 2px 5px;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Event Cards */
+        .event-card {
+            width: 100%;
+            height: 90%;
+            padding: 0 10px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            color: #555;
+        }
+
+        .evt-peach { background-color: var(--accent-peach); }
+        .evt-green { background-color: var(--accent-green); }
+        .evt-grey { background-color: var(--accent-grey); }
+
+        .evt-cat {
+            font-weight: 500;
+            margin-right: 12px;
+            min-width: 70px;
+        }
+        
+        .evt-divider {
+            margin-right: 12px;
+            color: #777;
+            font-size: 0.7rem;
+        }
+        
+        .evt-desc {
+            flex: 1;
+            color: #444;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #EEE; 
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #DDD; 
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="planner-container">
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar">
+        
+        <!-- Weekly Tasks Section -->
+        <div>
+            <div class="section-header">Weekly Tasks</div>
+            
+            <div class="progress-container">
+                <div class="progress-circle">0%</div>
+                <div class="progress-lines">
+                    <div class="line"></div>
+                    <div class="line"></div>
+                    <div class="line"></div>
+                </div>
+            </div>
+
+            <ul class="task-list">
+                <li class="task-item"><span class="custom-radio"></span> Grocery shopping</li>
+                <li class="task-item"><span class="custom-radio"></span> Meal prep</li>
+                <li class="task-item"><span class="custom-radio"></span> Clean linen house</li>
+                <li class="task-item"><span class="custom-radio"></span> Laundry</li>
+                <li class="task-item"><span class="custom-radio"></span> Grocery edit</li>
+                <li class="task-item"><span class="custom-radio"></span> Workout</li>
+                <li class="task-item"><span class="custom-radio"></span> Declutter house</li>
+                <li class="task-item"><span class="custom-radio"></span> Self care night</li>
+            </ul>
+        </div>
+
+        <!-- Notes Section -->
+        <div>
+            <div class="section-header">Notes</div>
+            <div class="notes-area">
+                <!-- Editable area for demo -->
+                <div contenteditable="true" style="outline:none; color: #666; font-size: 0.85rem;">
+                </div>
+            </div>
+        </div>
+
+        <!-- Habits Section -->
+        <div>
+            <table class="habits-table">
+                <thead>
+                    <tr>
+                        <th>HABITS TASK</th>
+                        <th>S</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Brush Teeth</td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                    </tr>
+                    <tr>
+                        <td>Skincare</td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                    </tr>
+                     <tr>
+                        <td>Exercise</td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                    </tr>
+                    <tr>
+                        <td>Journal</td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                    </tr>
+                     <tr>
+                        <td>Reading</td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                    </tr>
+                    <tr>
+                        <td>Tidy Up</td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                        <td><div class="check-box"></div></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </aside>
+
+    <!-- RIGHT CALENDAR -->
+    <main class="calendar-view" id="calendarMain">
+        <!-- Javascript will populate columns here -->
+    </main>
+</div>
+
+<script>
+    // Configuration for the calendar
+    const days = [
+        { name: 'Monday', date: 'August 16, 2026' },
+        { name: 'Tuesday', date: 'August 17, 2026' },
+        { name: 'Wednesday', date: 'August 18, 2026' },
+        { name: 'Thursday', date: 'August 19, 2026' },
+        { name: 'Friday', date: 'August 20, 2026' }
+    ];
+
+    // Some sample data to mimic the image
+    const scheduleData = {
+        'Monday': {
+            '6:30 AM': { category: 'Shower', task: 'Shower', type: 'peach' },
+            '7:00 AM': { category: 'Work', task: '', type: 'green' },
+            '8:00 AM': { category: 'Work', task: '', type: 'green' },
+            '9:00 AM': { category: 'Work', task: '', type: 'green' },
+            '11:00 AM': { category: 'Work', task: '', type: 'green' },
+            '12:00 PM': { category: 'Lunch', task: '', type: 'peach' },
+            '1:00 PM': { category: 'Household', task: 'Tdy-up', type: 'peach' },
+            '2:00 PM': { category: 'Work', task: '', type: 'green' },
+            '3:00 PM': { category: 'Work', task: '', type: 'green' },
+            '4:00 PM': { category: 'Work', task: '', type: 'green' },
+            '6:00 PM': { category: 'Dinner', task: '', type: 'peach' },
+            '7:00 PM': { category: 'Gyn', task: '', type: 'peach' },
+            '8:00 PM': { category: 'Road', task: '', type: 'green' },
+            '10:00 PM': { category: 'Sleep', task: '', type: 'peach' },
+        },
+        'Tuesday': {
+            '6:00 AM': { category: 'Car', task: '', type: 'peach' },
+            '7:00 AM': { category: 'Work', task: '', type: 'green' },
+            '8:00 AM': { category: 'Work', task: '', type: 'green' },
+            '9:00 AM': { category: 'Work', task: '', type: 'green' },
+            '1:00 PM': { category: 'Meeting', task: '', type: 'green' },
+            '3:00 PM': { category: 'Exercise', task: '', type: 'grey' },
+            '6:00 PM': { category: 'Exercise', task: '', type: 'grey' },
+            '8:00 PM': { category: 'Sleep', task: '', type: 'green' }
+        }
+    };
+
+    const calendarContainer = document.getElementById('calendarMain');
+    const startHour = 6; // 6 AM
+    const endHour = 23; // 11 PM
+
+    // Generate columns
+    days.forEach(day => {
+        const column = document.createElement('div');
+        column.className = 'day-column';
+
+        // Updated Header Structure
+        column.innerHTML = `
+            <div class="day-header-container">
+                <div class="day-header-box">
+                    <h2>${day.name}</h2>
+                </div>
+            </div>
+            <div class="day-date">${day.date}</div>
+            <div class="day-subheader">
+                <span>Time</span>
+                <span>Category</span>
+                <span>Task</span>
+            </div>
+        `;
+
+        // Time Slots
+        for (let i = startHour; i <= endHour; i++) {
+            createTimeSlot(column, i, 0, day.name);
+            
+            // Just for demo purposes, if it's Monday 6 AM, add the 6:30 slot manually
+            if (day.name === 'Monday' && i === 6) {
+                createTimeSlot(column, 6, 30, day.name);
+            }
+             // Just for demo purposes, if it's Tuesday 2 AM (simulate extra slot)
+             if (day.name === 'Tuesday' && i === 6) {
+                 createTimeSlot(column, 2, 0, day.name); // Simulating the weird "2:00 AM" slot in the image
+             }
+        }
+
+        calendarContainer.appendChild(column);
+    });
+
+    function createTimeSlot(container, hour, minute, dayName) {
+        // Format time string
+        const ampm = hour >= 12 && hour < 24 ? 'PM' : 'AM';
+        const displayHour = hour > 12 ? hour - 12 : (hour === 0 || hour === 24 ? 12 : hour);
+        const minStr = minute === 0 ? '00' : minute;
+        // Fix for 24h logic if needed, but keeping simple for this design
+        
+        const timeLabel = `${displayHour}:${minStr} ${ampm}`;
+        
+        renderSlot(container, timeLabel, dayName);
+    }
+
+    function renderSlot(container, timeLabel, dayName) {
+        const slot = document.createElement('div');
+        slot.className = 'time-slot';
+        
+        // Check if we have an event
+        let contentHtml = '';
+        const dayEvents = scheduleData[dayName];
+        if (dayEvents && dayEvents[timeLabel]) {
+            const ev = dayEvents[timeLabel];
+            contentHtml = `
+                <div class="event-card evt-${ev.type}">
+                    <span class="evt-cat">${ev.category}</span>
+                    ${ev.task ? '<span class="evt-divider">▸</span>' : ''}
+                    <span class="evt-desc">${ev.task}</span>
+                </div>
+            `;
+        }
+
+        slot.innerHTML = `
+            <div class="ts-time">${timeLabel}</div>
+            <div class="ts-content">
+                ${contentHtml}
+            </div>
+        `;
+        container.appendChild(slot);
+    }
+
+    // Interactive Checkboxes
+    document.querySelectorAll('.check-box').forEach(box => {
+        box.addEventListener('click', function() {
+            this.classList.toggle('checked');
+        });
+    });
+
+    document.querySelectorAll('.custom-radio').forEach(radio => {
+        radio.addEventListener('click', function() {
+            this.classList.toggle('checked');
+        });
+    });
+
+</script>
+
+</body>
+</html>

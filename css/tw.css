@@ -1,0 +1,48 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+/*
+  Transition theme: mapped to current palette to preserve existing visual style.
+  This theme is prepared now and will be used during block-by-block migration.
+*/
+@plugin "daisyui/theme" {
+  name: "calendar_soft";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+  --color-base-100: #fffaed;
+  --color-base-200: #fff7ea;
+  --color-base-300: #e3dbce;
+  --color-base-content: #555555;
+
+  --color-primary: #bababa;
+  --color-primary-content: #ffffff;
+  --color-secondary: #cbd1c7;
+  --color-secondary-content: #555555;
+  --color-accent: #ffddc4;
+  --color-accent-content: #555555;
+
+  --color-neutral: #8f8f8f;
+  --color-neutral-content: #ffffff;
+
+  --color-info: #d7f1f6;
+  --color-info-content: #555555;
+  --color-success: #e2e3d1;
+  --color-success-content: #555555;
+  --color-warning: #ffddc4;
+  --color-warning-content: #555555;
+  --color-error: #f4b8b1;
+  --color-error-content: #555555;
+
+  --radius-selector: 0.25rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

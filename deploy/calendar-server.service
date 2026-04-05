@@ -1,0 +1,16 @@
+[Unit]
+Description=Calendar Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/admin/web/system32.ru/current
+EnvironmentFile=/home/admin/web/system32.ru/private/.env
+ExecStart=/home/admin/web/system32.ru/current/calendar-server
+Restart=on-failure
+RestartSec=2
+User=admin
+Group=admin
+
+[Install]
+WantedBy=multi-user.target
